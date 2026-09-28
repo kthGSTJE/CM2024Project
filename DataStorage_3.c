@@ -13,6 +13,24 @@
 // Sedan skickar vi en pekare till windows till just denna DCB, Vi skickar pekarne med SetCommstate funktionen och getcom ger nuvarande inställningar
 // Getcomm --> Fyller structen som har väldigt många saker med förbestämda inställningar och sedan ändrar vi vissa saker 
 
+#define COMMAND_LENGTH 255
+
+typedef struct PlotSettings
+{
+    char fileName[COMMAND_LENGTH];
+    char title[COMMAND_LENGTH];
+    char style[COMMAND_LENGTH];
+} PlotSet;
+
+typedef struct GnuSettings
+{
+    char title[COMMAND_LENGTH];
+    char xLabel[COMMAND_LENGTH];
+    char yLabel[COMMAND_LENGTH];
+    PlotSet plot;
+} GnuSet;
+
+
 typedef struct {
     uint32_t time_ms;
     double ax;
@@ -32,6 +50,20 @@ int main(void) {
     IMUdata measurements[MAXMEASUREMENTS];
     int currentMeasurements = 0;
     HANDLE hComm;
+
+    GnuSet plotSettings = {
+        .title = "set title \"Serious Head Injuries\"",
+        .xLabel = "set xlabel \"Time\"",
+        .yLabel = "set ylabel \"Force\"",
+        .plot = {
+            .fileName = "measurements.txt",
+            .title = "This is our graph",
+            .style = "with lines"
+        }
+    };
+
+    FILE *gnupipe = NULL;
+    gnupipe = _popen("gnuplot -persistent", "w");
 
     hComm = CreateFileA("\\\\.\\COM3",          // A står för ANSI version medan om man lägger W så är det UNICODE version, 
                         GENERIC_READ,    // Generic read, dvs vi vill läsa från porten
@@ -146,12 +178,16 @@ int main(void) {
 
     char fileName[FILENAMECHARS];
     printf("Data collection is complete\n");
-    printf("Please enter a filename to save: ");
-    scanf("%s", fileName);
-    // Datan kommer in som en rad text till receive_data_buffer
     //sscanf returnerar hur många värden den lyckades läsa och vi vill läsa in 8 
-    saveMeasurments(measurements, currentMeasurements, fileName);
+    saveMeasurments(measurements, currentMeasurements, plotSettings.plot.fileName);
     CloseHandle(hComm); // Closign serial Port, behövs för att om man inte stängger kommunikation kan itne andra program använda porten
+    
+    //Execute gnucommands
+    fprintf(gnupipe, "%s\n", plotSettings.title);
+    fprintf(gnupipe, "%s\n", plotSettings.xLabel);
+    fprintf(gnupipe, "%s\n", plotSettings.yLabel);
+    fprintf(gnupipe, "plot '%s' %s title '%s'\n", plotSettings.plot.fileName, plotSettings.plot.style, plotSettings.plot.title);
+    _pclose(gnupipe);
     return 0;
 }
 
