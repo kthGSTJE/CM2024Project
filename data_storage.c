@@ -2,8 +2,9 @@
 #include <windows.h>
 #include <stdint.h>
 #include <conio.h>
+
 #define MAXMEASUREMENTS 20
-#define FILENAMECHARS 128
+#define COMMAND_LENGTH 255
 
 // Serial ports är till för kommunikation med externa devices, DB9 var dm gamla med 9 pins men används inom industrin, UART
 // Namnges genom tex COM1, COM2, COM3. Double digits --> Serial converters
@@ -13,7 +14,6 @@
 // Sedan skickar vi en pekare till windows till just denna DCB, Vi skickar pekarne med SetCommstate funktionen och getcom ger nuvarande inställningar
 // Getcomm --> Fyller structen som har väldigt många saker med förbestämda inställningar och sedan ändrar vi vissa saker 
 
-#define COMMAND_LENGTH 255
 
 typedef struct PlotSettings
 {
@@ -61,7 +61,6 @@ int main(void) {
             .style = "with lines"
         }
     };
-
     FILE *gnupipe = NULL;
     gnupipe = _popen("gnuplot -persistent", "w");
 
@@ -176,7 +175,6 @@ int main(void) {
         }
     }
 
-    char fileName[FILENAMECHARS];
     printf("Data collection is complete\n");
     //sscanf returnerar hur många värden den lyckades läsa och vi vill läsa in 8 
     saveMeasurments(measurements, currentMeasurements, plotSettings.plot.fileName);

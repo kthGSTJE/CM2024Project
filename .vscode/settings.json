@@ -1,0 +1,6 @@
+{
+    "nrf-connect.applications": [
+        "${workspaceFolder}\\imu_sensor"
+    ],
+    "cmake.sourceDirectory": "C:/Users/gusta/Desktop/vsws/c/cm2024/CM2024Project/nordic"
+}
