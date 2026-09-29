@@ -126,8 +126,8 @@ int main(void) {
     //  LPoverlapped --> Pointer till en overlapped struct för asynkron i/o
     BOOL success;
     DWORD bytesRead;
-    char receive_data_buffer[FILENAMECHARS] = {0};
-    char lineBuffer[FILENAMECHARS];          // Temorär sträng för att bygga upp en hel "sträng"
+    char receive_data_buffer[COMMAND_LENGTH] = {0};
+    char lineBuffer[COMMAND_LENGTH];          // Temorär sträng för att bygga upp en hel "sträng"
     int linePosition = 0;       // Håller koll på vilken char vi är på så om vi tar emot hälften av datan så kan resterande delen appendas till samma sträng
     // Tiemouts?? Kolla på senare
     // Blocking --> Programmet inväntar data
