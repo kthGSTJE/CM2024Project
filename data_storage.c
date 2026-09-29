@@ -3,9 +3,11 @@
 #include <stdint.h>
 #include <conio.h>
 
-#define MAXMEASUREMENTS 20
+#define MAXMEASUREMENTS 2000
 #define COMMAND_LENGTH 255
-//vafan
+
+#define MS_SECOND 1000
+#define G_FORCE 9.82
 
 // Serial ports är till för kommunikation med externa devices, DB9 var dm gamla med 9 pins men används inom industrin, UART
 // Namnges genom tex COM1, COM2, COM3. Double digits --> Serial converters
@@ -65,7 +67,7 @@ int main(void) {
     FILE *gnupipe = NULL;
     gnupipe = _popen("gnuplot -persistent", "w");
 
-    hComm = CreateFileA("\\\\.\\COM3",          // A står för ANSI version medan om man lägger W så är det UNICODE version, 
+    hComm = CreateFileA("\\\\.\\COM6",          // A står för ANSI version medan om man lägger W så är det UNICODE version, 
                         GENERIC_READ,    // Generic read, dvs vi vill läsa från porten
                         0,             // Ingen delning av filen
                         NULL,        // Ingen säkerhet/encryption
@@ -195,8 +197,8 @@ void saveMeasurments(IMUdata measurements[], int currentMeasurements, char fileN
     if (pFile = fopen(fileName, "w")) {
         for (int i = 0; i < currentMeasurements; i++) {
             fprintf(pFile, "%u %f\n", 
-                    measurements[i].time_ms,
-                    measurements[i].a_total);
+                    measurements[i].time_ms/MS_SECOND,
+                    measurements[i].a_total/G_FORCE);
         }
         printf("Saving to %s\n", fileName);
         fclose(pFile);
