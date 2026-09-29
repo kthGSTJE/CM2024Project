@@ -5,6 +5,7 @@
 
 #define MAXMEASUREMENTS 20
 #define COMMAND_LENGTH 255
+//vafan
 
 // Serial ports är till för kommunikation med externa devices, DB9 var dm gamla med 9 pins men används inom industrin, UART
 // Namnges genom tex COM1, COM2, COM3. Double digits --> Serial converters
