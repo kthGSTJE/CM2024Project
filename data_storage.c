@@ -8,6 +8,9 @@
 
 #define MS_SECOND 1000
 #define G_FORCE 9.82
+#define PRE_TRIGGER_MEASUREMENTS 25
+#define POST_TRIGGER_MEASUREMENTS 25
+#define A_TOTAL_THRESHOLD (2.0 * G_FORCE)
 
 // Serial ports är till för kommunikation med externa devices, DB9 var dm gamla med 9 pins men används inom industrin, UART
 // Namnges genom tex COM1, COM2, COM3. Double digits --> Serial converters
@@ -52,6 +55,11 @@ int main(void) {
     char error_message[256]; // Lagrrar felmeddelandet i text.
     IMUdata measurements[MAXMEASUREMENTS];
     int currentMeasurements = 0;
+    int totalMeasurements = 0;
+    IMUdata preTriggerBuffer[PRE_TRIGGER_MEASUREMENTS];
+    int preTriggerCount = 0;
+    int preTriggerNext = 0;
+    int postTriggerRemaining = 0;
     HANDLE hComm;
 
     GnuSet plotSettings = {
@@ -136,7 +144,7 @@ int main(void) {
     // Blocking --> Programmet inväntar data
     // Non blocking --> Programmet gör andra saker medan den väntar på data
     // 2 strategier finns, "polling" som kollar efter data, eller "event driven" mha WaitCommEvent som triggas när data kommer
-    while (currentMeasurements < MAXMEASUREMENTS) {
+    while (totalMeasurements < MAXMEASUREMENTS) {
         success = ReadFile(hComm,                 // Adress till öppnad port
                             receive_data_buffer,          // Poitner till buffeert
                             sizeof(receive_data_buffer) - 1,    // Storlek på datan
@@ -145,25 +153,51 @@ int main(void) {
 
         if (success && bytesRead > 0) {                      // Kolla på \n inmatning för högre sampling rate senare 
             for (DWORD i = 0; i < bytesRead; i++) {
+                if (totalMeasurements >= MAXMEASUREMENTS) {
+                    break;
+                }
                 char currentChar = receive_data_buffer[i];
                 if (currentChar != '\n') {
                     lineBuffer[linePosition] = currentChar;
                     linePosition++;
                 } else {
                     lineBuffer[linePosition] = '\0';
+                    IMUdata measurement;
                     int dataRead = sscanf(lineBuffer,         // Omvandlar värden i textformat till faktiska numeriska värden, returnerar även hur många värden den läser in
                                 "%u;%lf;%lf;%lf;%lf;%lf;%lf;%lf",
-                                &measurements[currentMeasurements].time_ms,
-                                &measurements[currentMeasurements].ax,
-                                &measurements[currentMeasurements].ay,
-                                &measurements[currentMeasurements].az,
-                                &measurements[currentMeasurements].gx,
-                                &measurements[currentMeasurements].gy,
-                                &measurements[currentMeasurements].gz,
-                                &measurements[currentMeasurements].a_total);
+                                &measurement.time_ms,
+                                &measurement.ax,
+                                &measurement.ay,
+                                &measurement.az,
+                                &measurement.gx,
+                                &measurement.gy,
+                                &measurement.gz,
+                                &measurement.a_total);
                     printf("dataRead = %d\n", dataRead);
                     if (dataRead == 8) {
-                        currentMeasurements++;
+                        if (postTriggerRemaining > 0) {
+                            measurements[currentMeasurements++] = measurement;
+                            postTriggerRemaining--;
+                            if (measurement.a_total > A_TOTAL_THRESHOLD) {
+                                postTriggerRemaining = POST_TRIGGER_MEASUREMENTS;
+                            }
+                        } else if (measurement.a_total > A_TOTAL_THRESHOLD) {
+                            int oldest = (preTriggerNext - preTriggerCount + PRE_TRIGGER_MEASUREMENTS)
+                                         % PRE_TRIGGER_MEASUREMENTS;
+                            for (int j = 0; j < preTriggerCount; j++) {
+                                measurements[currentMeasurements++] =
+                                    preTriggerBuffer[(oldest + j) % PRE_TRIGGER_MEASUREMENTS];
+                            }
+                            measurements[currentMeasurements++] = measurement;
+                            postTriggerRemaining = POST_TRIGGER_MEASUREMENTS;
+                        }
+
+                        preTriggerBuffer[preTriggerNext] = measurement;
+                        preTriggerNext = (preTriggerNext + 1) % PRE_TRIGGER_MEASUREMENTS;
+                        if (preTriggerCount < PRE_TRIGGER_MEASUREMENTS) {
+                            preTriggerCount++;
+                        }
+                        totalMeasurements++;
                     }
                     linePosition = 0;
                 }
